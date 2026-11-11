@@ -15,13 +15,18 @@ function runBunAuditFallback() {
     }
   );
 
-  if (result.exitCode !== 0) {
-    console.error("[BLOCKED] Bun Audit menemukan masalah atau gagal dijalankan.");
-    process.exitCode = 1;
+  if (result.exitCode === 0) {
+    console.log("[PASS] Bun Audit tidak menemukan vulnerability pada threshold high.");
     return;
   }
 
-  console.log("[PASS] Bun Audit selesai.");
+  if (result.exitCode !== null) {
+    console.error("[BLOCKED] Bun Audit menemukan vulnerability pada threshold high.");
+  } else {
+    console.error("[ERROR] Bun Audit gagal dijalankan atau dihentikan.");
+  }
+
+  process.exitCode = 1;
 }
 
 async function main() {

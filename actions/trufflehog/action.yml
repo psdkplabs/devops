@@ -1,11 +1,11 @@
-name: Truffleog Secret Scan
+name: TruffleHog Secret Scan
 description: Scan Git repository for exposed secrets
 
 inputs:
   base:
     description: Base commit for scanning
     required: false
-    default: ""
+    default: "./"
 
   head:
     description: Head commit for scanning
@@ -18,7 +18,5 @@ runs:
     - name: Run TruffleHog
       uses: trufflesecurity/trufflehog@e76dff8a7e57d6df0c60ad8cbf5d5cba505a8fc9
       with:
-        path: ./
-        base: ${{ inputs.base }}
-        head: ${{ inputs.head }}
+        path: ${{ inputs.path }}
         extra_args: --debug
