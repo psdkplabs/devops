@@ -1,0 +1,78 @@
+
+name: Reusable Security Scan
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Application directory to scan
+        required: false
+        type: string
+        default: "."
+
+      package-manager:
+        description: Package manager used by the application
+        required: false
+        type: string
+        default: "none"
+
+      run-secret-scan:
+        description: Enable TruffleHog secret scanning
+        required: false
+        type: boolean
+        default: true
+
+      run-semgrep:
+        description: Enable Semgrep scanning
+        required: false
+        type: boolean
+        default: true
+
+      run-cve:
+        description: Enable cve.now scanning
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  security:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout application repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: TruffleHog Secret Scan
+        if: inputs.run-secret-scan
+        uses: psdkplabs/devops/actions/trufflehog@main
+        with:
+          head: ${{ github.sha }}
+
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Set up Python
+        if: inputs.run-semgrep
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Semgrep
+        if: inputs.run-semgrep
+        run: python -m pip install semgrep
+
+      - name: Semgrep SAST Scan
+        if: inputs.run-semgrep
+        uses: psdkplabs/devops/actions/semgrep@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          config: "p/default"
+
+      - name: CVE Dependency Scan
+        if: inputs.run-cve && inputs.package-manager == 'bun'
+        uses: psdkplabs/devops/actions/dependency-scan@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
