@@ -32,26 +32,52 @@ permissions:
   contents: read
 
 jobs:
-  security-scan:
-    name: Security Scan
+  secret-scan:
+    name: Secret Scan (TruffleHog)
+    if: inputs.run-secret-scan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout Application Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: TruffleHog Secret Scan
-        if: inputs.run-secret-scan
         uses: psdkplabs/devops/actions/trufflehog@main
+        with:
+          path: ${{ inputs.working-directory }}
+
+  sast:
+    name: SAST Scan (Semgrep)
+    if: inputs.run-semgrep
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Application Repository
+        uses: actions/checkout@v4 # TODO: pin ke SHA
+        with:
+          persist-credentials: false
 
       - name: Semgrep SAST
-        if: inputs.run-semgrep
         uses: psdkplabs/devops/actions/semgrep@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
 
-      - name: Dependency Security Scan
-        if: inputs.run-cve
+  sca:
+    name: SCA (cve.now + Bun Audit)
+    if: inputs.run-cve
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Application Repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: cve.now SCA
         uses: psdkplabs/devops/actions/dependency-scan@main
         with:
           working-directory: ${{ inputs.working-directory }}

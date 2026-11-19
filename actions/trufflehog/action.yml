@@ -2,15 +2,25 @@ name: TruffleHog Secret Scan
 description: Scan Git repository for exposed secrets
 
 inputs:
+  path:
+    description: Repository path to scan (root repo git)
+    required: false
+    default: "./"
+
   base:
     description: Base commit for scanning
     required: false
-    default: "./"
+    default: ""
 
   head:
     description: Head commit for scanning
     required: false
-    default: ${{ github.sha }}
+    default: ""
+
+  extra_args:
+    description: Extra arguments to pass to TruffleHog
+    required: false
+    default: "--results=verified,unknown"
 
 runs:
   using: composite
@@ -19,4 +29,6 @@ runs:
       uses: trufflesecurity/trufflehog@e76dff8a7e57d6df0c60ad8cbf5d5cba505a8fc9
       with:
         path: ${{ inputs.path }}
-        extra_args: --debug
+        base: ${{ inputs.base }}
+        head: ${{ inputs.head }}
+        extra_args: ${{ inputs.extra_args }}

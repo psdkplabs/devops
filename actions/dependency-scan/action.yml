@@ -1,5 +1,5 @@
 name: Dependency CVE Scan
-description: Scan for CVEs in dependencies using cve.now
+description: Scan for CVEs in dependencies using cve.now (fallback ke Bun Audit)
 
 inputs:
   working-directory:
@@ -12,6 +12,8 @@ runs:
   steps:
     - name: Set up Bun
       uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: "1.2.15"
 
     - name: Run Dependency Security Scan
       shell: bash

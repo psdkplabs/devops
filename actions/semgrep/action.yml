@@ -27,9 +27,11 @@ runs:
     - name: Run Semgrep SAST Scan
       shell: bash
       working-directory: ${{ inputs.working-directory }}
+      env:
+        SEMGREP_RULES: ${{ inputs.config }}
       run: |
         semgrep scan \
-        --config "${{ inputs.config }}" \
+        --config "$SEMGREP_RULESET" \
         --error \
         --metrics=off \
         .
