@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 
 const API_URL = "https://cve.now/api/v1/check";
-const BlockSeverity = ["critical", "high"];
+const BLOCKING = ["critical", "high"];
 
 function runBunAuditFallback() {
   console.warn("\n[WARNING] cve.now tidak tersedia.");
@@ -18,19 +18,23 @@ function runBunAuditFallback() {
     process.exitCode = 1;
     return;
   }
-  
+
   if (result.exitCode === 0) {
-    console.error("[ERROR] Bun Audit tidak menemukan vulnerability pada threshold high.");
+    console.log("[PASS] Bun Audit tidak menemukan vulnerability pada threshold high.");
     return;
   }
 
   if (result.exitCode === 1) {
-    console.error("[ERROR] Bun Audit menemukan vulnerability pada threshold high.");
+    // Bun Audit memakai exit code 1 baik untuk temuan vulnerability maupun error
+    // (mis. gagal membaca lockfile). Cek log Bun Audit di atas untuk membedakannya.
+    console.error("[BLOCKED] Bun Audit gagal atau menemukan vulnerability pada threshold high. Lihat output Bun Audit di atas.");
   } else {
-    console.error(`[ERROR] Bun Audit gagal dijalankan atau dihentikan (exit code: ${result.exitCode}, signal: ${result.signalCode ?? "-"}).`);
+    console.error(
+      `[ERROR] Bun Audit gagal dijalankan atau dihentikan (exit code: ${result.exitCode}, signal: ${result.signalCode ?? "-"}).`
+    );
   }
 
-  // Bun Audit gagal dijalankan = fall (sesuai kebijakan)
+  // Bun Audit gagal dijalankan = fail (sesuai kebijakan)
   process.exitCode = 1;
 }
 
@@ -38,7 +42,7 @@ async function main() {
   let lockfileContent;
 
   try {
-    lockfileContent = await readFile("bun.lock", "utf-8");
+    lockfileContent = await readFile("bun.lock", "utf8");
   } catch (error) {
     console.error("[ERROR] Tidak dapat membaca bun.lock:", error.message);
     process.exitCode = 2;
@@ -47,9 +51,9 @@ async function main() {
 
   let result;
 
-  // Primary Scanner: cve.now
+  // PRIMARY SCANNER: cve.now
   try {
-    console.log("[INFO] Menggunakan cve,now sebagai primary scanner...");
+    console.log("[INFO] Menggunakan cve.now sebagai primary scanner...");
 
     const response = await fetch(API_URL, {
       method: "POST",
@@ -57,11 +61,11 @@ async function main() {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         lockfile_name: "bun.lock",
         lockfile_content: lockfileContent,
       }),
-      signal: AbortSignla.timeout(15000),
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!response.ok) {
@@ -74,18 +78,18 @@ async function main() {
       throw new Error("Invalid API response schema");
     }
   } catch (error) {
-    // Hanya layanan tidak dapat diakses / respons tidak alid yang memicu fallback
+    // Hanya layanan tidak dapat diakses / respons tidak valid yang memicu fallback
     console.warn(`[WARNING] cve.now gagal: ${error.message}`);
     runBunAuditFallback();
     return;
   }
 
   // EVALUATE PRIMARY SCANNER RESULT
-  console.log(`[INFO] cve.now memeriksa ${result.checked} dependencies, menemukan ${result.affected.length} vulnerabilities.`);
+  console.log(`[INFO] Packages checked: ${result.checked}`);
   console.log(`[INFO] Vulnerabilities: ${result.affected.length}`);
 
-  let bloked = false;
-  
+  let blocked = false;
+
   for (const item of result.affected) {
     const severity = String(item.rating ?? "unknown").toLowerCase();
     const line = `${item.id} | ${item.package?.name} | ${item.package?.version} | ${severity}`;
@@ -96,25 +100,25 @@ async function main() {
       blocked = true;
       console.log(`::error::${line}`);
     } else if (!["medium", "low"].includes(severity)) {
-      // Severity tidak dikenal: tidak memblokir tetapi harus terlihat
+      // severity tidak dikenal: tidak memblokir sesuai kebijakan, tapi harus terlihat
       console.log(`::warning::Severity tidak dikenali (${severity}): ${line}`);
     }
   }
 
   if (blocked) {
-    console.error("[BLOCKED] High/Critical vulnerabilities ditemukan.");
+    console.error("[BLOCKED] High/Critical vulnerability ditemukan.");
     process.exitCode = 1;
     return;
   }
 
   if (result.affected.length > 0) {
-    console.warn("[WARNING] Vulnerabilities ditemukan, tetapi tidak mencapai batas pemblokiran.");
+    console.warn("[WARNING] Vulnerability ditemukan, tetapi tidak mencapai batas pemblokiran.");
   } else {
     console.log("[PASS] Tidak ditemukan vulnerability.");
   }
 }
 
 main().catch((error) => {
-  console.error("[ERROR]", error.massage);
+  console.error("[ERROR]", error.message);
   process.exitCode = 2;
 });
