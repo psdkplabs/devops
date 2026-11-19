@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 
-const API_URL = "https://cve.now/api/v1/check";
+const API_URL = "https://cve.now/api/v1/checked";
 const BLOCKING = ["critical", "high"];
 
 function runBunAuditFallback() {
