@@ -1,4 +1,3 @@
-
 name: Reusable Security Scan
 
 "on":
@@ -37,10 +36,9 @@ jobs:
     if: inputs.run-secret-scan
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
       - name: Checkout Application Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -49,15 +47,16 @@ jobs:
         uses: psdkplabs/devops/actions/trufflehog@main
         with:
           path: ${{ inputs.working-directory }}
+          head: ${{ github.sha }}
 
   sast:
-    name: SAST Scan (Semgrep)
+    name: SAST (Semgrep)
     if: inputs.run-semgrep
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Checkout Application Repository
-        uses: actions/checkout@v4 # TODO: pin ke SHA
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
 
@@ -73,11 +72,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout Application Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
 
-      - name: cve.now SCA
+      - name: Dependency Security Scan
         uses: psdkplabs/devops/actions/dependency-scan@main
         with:
           working-directory: ${{ inputs.working-directory }}
